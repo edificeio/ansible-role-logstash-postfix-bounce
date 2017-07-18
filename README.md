@@ -38,6 +38,11 @@ Including an example of how to use your role (for instance, with variables passe
 
 ```
 
+Acknowledgement
+---------------
+
+Props to [Tom Hendrikx](https://github.com/whyscream) for the cool [postfix grok patterns](https://github.com/whyscream/postfix-grok-patterns)
+
 License
 -------
 
