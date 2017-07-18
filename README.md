@@ -31,7 +31,7 @@ Including an example of how to use your role (for instance, with variables passe
   roles:
     - role: briancoca.oracle_java7
     
-    - role: logstash
+    - role: ansible-role-logstash-postfix-bounce
       elasticsearch_host: 'elastic.localdomain'
       elasticsearch_port: 9200
       filebeat_input_port: 5044
