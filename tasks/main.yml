@@ -1,0 +1,40 @@
+---
+- name: Installing apt-transport-https
+  apt:
+    name: apt-transport-https
+    state: present
+
+- name: Adding elastic.co apt key
+  apt_key: 
+    url: 'https://artifacts.elastic.co/GPG-KEY-elasticsearch'
+    state: present
+
+- name: Adding elastic.co apt repository
+  apt_repository:
+    repo: 'deb https://artifacts.elastic.co/packages/5.x/apt stable main'
+    filename: 'elastic-5.x.list'
+    state: present
+    update_cache: yes
+
+- name: Installing logstash
+  apt:
+    name: logstash
+    state: present
+  notify: enable logstash
+
+- name: Ensuring /etc/logstash/patterns.d directory
+  file:
+    path: /etc/logstash/patterns.d
+    state: directory
+
+- name: Uploading postfix grok patterns
+  copy:
+    src: postfix.grok
+    dest: /etc/logstash/patterns.d/postfix.grok    
+  notify: restart logstash
+  
+- name: Setting postfix.conf configuration file
+  template:
+    src: postfix.j2
+    dest: /etc/logstash/conf.d/postfix.conf
+  notify: restart logstash

@@ -1,0 +1,113 @@
+input {
+  beats {
+    port => {{ filebeat_input_port }}
+    }
+}
+
+filter {
+  grok {
+    match => { "message" => "%{SYSLOGTIMESTAMP} %{SYSLOGHOST} %{DATA:program}(?:\[%{POSINT}\])?: %{GREEDYDATA:message}" }
+    overwrite => "message"
+  }
+    grok {
+        patterns_dir   => "/etc/logstash/patterns.d"
+        match          => [ "message", "^%{POSTFIX_SMTP}$" ]
+        tag_on_failure => [ "_grokparsefailure" ]
+    }
+
+    # process key-value data is it exists
+    if [postfix_keyvalue_data] {
+        kv {
+            source       => "postfix_keyvalue_data"
+            trim_value   => "<>,"
+            prefix       => "postfix_"
+            remove_field => [ "postfix_keyvalue_data" ]
+        }
+
+        # some post processing of key-value data
+        if [postfix_client] {
+            grok {
+                patterns_dir   => "/etc/logstash/patterns.d"
+                match          => ["postfix_client", "^%{POSTFIX_CLIENT_INFO}$"]
+                tag_on_failure => [ "_grok_kv_postfix_client_nomatch" ]
+                remove_field   => [ "postfix_client" ]
+            }
+        }
+        if [postfix_relay] {
+            grok {
+                patterns_dir   => "/etc/logstash/patterns.d"
+                match          => ["postfix_relay", "^%{POSTFIX_RELAY_INFO}$"]
+                tag_on_failure => [ "_grok_kv_postfix_relay_nomatch" ]
+                remove_field   => [ "postfix_relay" ]
+            }
+        }
+        if [postfix_delays] {
+            grok {
+                patterns_dir   => "/etc/logstash/patterns.d"
+                match          => ["postfix_delays", "^%{POSTFIX_DELAYS}$"]
+                tag_on_failure => [ "_grok_kv_postfix_delays_nomatch" ]
+                remove_field   => [ "postfix_delays" ]
+            }
+        }
+    }
+
+    # Do some data type conversions
+    mutate {
+        convert => [
+            # list of integer fields
+            "postfix_anvil_cache_size", "integer",
+            "postfix_anvil_conn_count", "integer",
+            "postfix_anvil_conn_rate", "integer",
+            "postfix_client_port", "integer",
+            "postfix_nrcpt", "integer",
+            "postfix_postscreen_cache_dropped", "integer",
+            "postfix_postscreen_cache_retained", "integer",
+            "postfix_postscreen_dnsbl_rank", "integer",
+            "postfix_relay_port", "integer",
+            "postfix_server_port", "integer",
+            "postfix_size", "integer",
+            "postfix_status_code", "integer",
+            "postfix_termination_signal", "integer",
+            "postfix_uid", "integer",
+
+            # list of float fields
+            "postfix_delay", "float",
+            "postfix_delay_before_qmgr", "float",
+            "postfix_delay_conn_setup", "float",
+            "postfix_delay_in_qmgr", "float",
+            "postfix_delay_transmission", "float",
+            "postfix_postscreen_violation_time", "float"
+        ]
+    }
+}
+
+output {
+  if "_grokparsefailure" in [tags] {
+    file {
+      path => "/tmp/postfix-grok-fail-%{+YYYY.MM.dd}.log"
+    }
+  }
+
+  else {
+    if [postfix_dsn] in ["5.2.0", "5.2.1", "5.2.2", "5.3.1", "5.4.5", "5.5.3"] {
+      elasticsearch {
+        hosts           => ["http://{{ elasticsearch_host }}:{{ elasticsearch_port }}"]
+        ssl             => false
+        manage_template => false
+        index           => "postfix-bounce"
+        document_type   => "soft"
+        document_id     => "%{postfix_to}"
+      }
+    }
+    else {
+      elasticsearch {
+        hosts           => ["http://{{ elasticsearch_host }}:{{ elasticsearch_port }}"]
+        ssl             => false
+        manage_template => false
+        index           => "postfix-bounce"
+        document_type   => "hard"
+        document_id     => "%{postfix_to}"
+      }
+    }
+  }
+}
