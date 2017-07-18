@@ -1,7 +1,7 @@
 ansible-role-logstash-postfix-bounce
 =========
 
-Install and configure Logstash for receiving postfix bounce logs from filebeat, processing them and sending them to elasticsearch
+Install and configure Logstash for receiving postfix bounce logs from a filebeat (configured with this [role](https://github.com/web-education/ansible-role-filebeat-postfix-bounce)), processing them and sending them to elasticsearch
 
 Requirements
 ------------
